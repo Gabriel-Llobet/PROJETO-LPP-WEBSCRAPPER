@@ -13,6 +13,49 @@ from selenium.common.exceptions import WebDriverException
 from webdriver_manager.chrome import ChromeDriverManager
 
 
+
+def main():
+    driver = None
+
+    try:
+        # Recebe e valida o nick_tag.
+        nick_tag = input_nick()
+        print(f'Vamos buscar os dados de: {nick_tag}')
+
+        # Separa o nick da tag para uso posterior.
+        nick = separar_nick_tag(nick_tag)
+
+        # Inicializa o WebDriver e configurações.
+        driver = setup()
+
+        # Navega até o site op.gg e realiza a pesquisa.
+        navigate_to_opgg(driver)
+        search_input(driver, nick_tag)
+
+        # Seleciona a aba "Solo/Duo".
+        soloduo_button(driver)
+        
+        WebDriverWait(driver, 10).until(
+        EC.presence_of_element_located((By.CLASS_NAME, 'button[value="FLEXRANKED"]'))
+        )
+        time_stamp = 0
+        time_stamp_date = driver.find_element(By.CSS_SELECTOR, 'button[value="FLEXRANKED"]')
+        
+        random_sleep()
+        
+        
+
+        # Botão "Flex" pode ser usado posteriormente.
+        # flex_button(driver)
+
+    except WebDriverException as e:
+        print(f"Erro: {e}")
+        raise SystemExit("Finalizando o programa.")
+    finally:
+        teardown(driver)
+
+
+
 # Função para dormir por um tempo aleatório, evitando a identificação como bot.
 def random_sleep():
     time.sleep(random.uniform(1, 3))
@@ -120,41 +163,4 @@ def teardown(driver):
 
 # Função principal que controla o fluxo do programa.
 if __name__ == "__main__":
-    driver = None
-
-    try:
-        # Recebe e valida o nick_tag.
-        nick_tag = input_nick()
-        print(f'Vamos buscar os dados de: {nick_tag}')
-
-        # Separa o nick da tag para uso posterior.
-        nick = separar_nick_tag(nick_tag)
-
-        # Inicializa o WebDriver e configurações.
-        driver = setup()
-
-        # Navega até o site op.gg e realiza a pesquisa.
-        navigate_to_opgg(driver)
-        search_input(driver, nick_tag)
-
-        # Seleciona a aba "Solo/Duo".
-        soloduo_button(driver)
-        
-        WebDriverWait(driver, 10).until(
-        EC.presence_of_element_located((By.CLASS_NAME, 'button[value="FLEXRANKED"]'))
-        )
-        time_stamp = 0
-        time_stamp_date = driver.find_element(By.CSS_SELECTOR, 'button[value="FLEXRANKED"]')
-        
-        random_sleep()
-        
-        
-
-        # Botão "Flex" pode ser usado posteriormente.
-        # flex_button(driver)
-
-    except WebDriverException as e:
-        print(f"Erro: {e}")
-        raise SystemExit("Finalizando o programa.")
-    finally:
-        teardown(driver)
+    main()
