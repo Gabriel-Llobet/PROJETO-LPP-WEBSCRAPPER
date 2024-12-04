@@ -1,8 +1,10 @@
+# Importação de bibliotecas necessárias
 import re
 import time
 import random
-import pandas as pd  # Importando o pandas
+import pandas as pd  # Manipulação de dados
 
+# Importação do Selenium e seus módulos
 from selenium import webdriver
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.by import By
@@ -11,120 +13,82 @@ from selenium.webdriver.support.ui import WebDriverWait
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.common.exceptions import WebDriverException
 
+# Gerenciador do driver do Chrome
 from webdriver_manager.chrome import ChromeDriverManager
 
+# Função principal que controla o fluxo do programa
 def main():
-    driver = None
+    driver = None  # Inicializa o WebDriver como None para controle no final do programa
 
     try:
-        # Recebe e valida o nick_tag.
+        # Solicita o nick_tag do usuário e valida
         nick_tag = input_nick()
-        print(f'Vamos buscar os dados de: {nick_tag}')
+        print(f'Buscando dados de: {nick_tag}')
 
-        # Separa o nick da tag para uso posterior.
+        # Separa apenas o "nick" para uso posterior
         nick = separar_nick_tag(nick_tag)
 
-        # Inicializa o WebDriver e configurações.
+        # Configura o WebDriver
         driver = setup()
 
-        # Navega até o site op.gg e realiza a pesquisa.
+        # Navega até o site op.gg e realiza a pesquisa pelo nick_tag
         navigate_to_opgg(driver)
         search_input(driver, nick_tag)
 
-        # Seleciona a aba "Solo/Duo".
+        # Seleciona a aba "Ranked Solo/Duo"
         soloduo_button(driver)
 
+        # Coleta informações das partidas
         match_divs = driver.find_elements(By.CLASS_NAME, "css-j7qwjs")
-
         dados_partidas = []
 
+        # Itera por cada partida encontrada
         for match in match_divs:
-            partida = {}
-
-            # Tipo de Partida
-            partida["Tipo de partida"] = match.find_element(By.CLASS_NAME, "game-type").text
-
-            # Horário
-            partida["Horário"] = match.find_element(By.CLASS_NAME, "time-stamp").text
-
-            # Resultado
-            partida["Resultado"] = match.find_element(By.CLASS_NAME, "result").text
-
-            # Duração
-            partida["Duração"] = match.find_element(By.CLASS_NAME, "length").text
-            
-            # Dados do jogador alvo (identificado pela classe 'is-me')
-            jogador_alvo = match.find_element(By.CLASS_NAME, "is-me")
-            jogador_nome = jogador_alvo.find_element(By.CLASS_NAME, "summoner-tooltip").text
-            jogador_campeao = jogador_alvo.find_element(By.TAG_NAME, "img").get_attribute("alt")
-            partida["Jogador Alvo Nome"] = jogador_nome
-            partida["Jogador Alvo Campeão"] = jogador_campeao
-            
-            partida["Rota"] = match.find_element(By.CLASS_NAME, "laning--my").text
-                      
-            # KDA
-            partida["KDA"] = match.find_element(By.CLASS_NAME, "kda").text
-            partida["KDA Ratio"] = match.find_element(By.CLASS_NAME, "kda-ratio").text
-            partida["P/Kill"] = match.find_element(By.CLASS_NAME, "p-kill").text
-            partida["CS"] = match.find_element(By.CLASS_NAME, "cs").text
-            
-            
-
-            # Estatísticas de Jogo
-
-            partida["Rank"] = match.find_element(By.CLASS_NAME, "avg-tier").text
-
-
-
-            # Adicionando ao resultado
+            partida = extrair_dados_partida(match)  # Função para extração de dados
             dados_partidas.append(partida)
 
         print(f'Total de partidas encontradas: {len(dados_partidas)}')
 
-        # Exibindo os dados extraídos
+        # Exibe os dados extraídos
         for partida in dados_partidas:
             print(partida)
 
-        # Convertendo os dados em um DataFrame do pandas
-        df = pd.DataFrame(dados_partidas)
-
-        # Salvando os dados no formato CSV
-        df.to_csv(f"{nick}_dados_partidas.csv", index=False)
-        print(f'Dados salvos em {nick}_dados_partidas.csv')
+        # Salva os dados em formato CSV
+        salvar_dados_csv(dados_partidas, nick)
 
     except WebDriverException as e:
         print(f"Erro: {e}")
         raise SystemExit("Finalizando o programa.")
     finally:
+        # Garante que o WebDriver será encerrado
         teardown(driver)
 
-# Função para dormir por um tempo aleatório, evitando a identificação como bot.
+# Função para dormir por um tempo aleatório (anti-bot)
 def random_sleep():
     time.sleep(random.uniform(1, 3))
 
-# Valida o formato do nick_tag informado para pesquisa.
+# Valida o formato do nick_tag
 def validar_nick_tag(nick: str) -> bool:
     padrao = r'^[\wÀ-ÿ\s]{3,16}#[\wÀ-ÿ\d]{3,5}$'
     if re.match(padrao, nick.strip()):
         print("Formato de nick e tag válido!")
         return True
     else:
-        print("Formato inválido! Certifique-se de usar o formato: nome#tag.")
+        print("Formato inválido! Use: nome#tag.")
         return False
 
-# Solicita e valida o nick_tag informado pelo usuário.
+# Solicita e valida o nick_tag informado pelo usuário
 def input_nick():
-    resultado = False
-    while not resultado:
-        nick_tag = input("Escreva nick e tag no seguinte formato: zezinho#br1\n")
-        resultado = validar_nick_tag(nick_tag)
-    return nick_tag
+    while True:
+        nick_tag = input("Digite o nick e tag no formato: nome#tag\n")
+        if validar_nick_tag(nick_tag):
+            return nick_tag
 
-# Separa o nick da tag para uso posterior.
+# Separa o nick da tag
 def separar_nick_tag(nick: str) -> str:
     return nick.split('#')[0]
 
-# Configura o WebDriver do Chrome com as opções necessárias.
+# Configura o WebDriver
 def setup(headless=False):
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
@@ -153,37 +117,57 @@ def setup(headless=False):
         return driver
     except WebDriverException as e:
         print(f"Erro ao configurar o WebDriver: {e}")
-        teardown()
+        teardown(None)
         raise SystemExit("Finalizando o programa.")
 
-# Navega até o site op.gg.
+# Navega até o site op.gg
 def navigate_to_opgg(driver):
     driver.get('https://www.op.gg/')
 
-# Clica no botão de "Ranked Solo/Duo" na página.
+# Seleciona a aba "Ranked Solo/Duo"
 def soloduo_button(driver):
     WebDriverWait(driver, 10).until(
         EC.element_to_be_clickable((By.CSS_SELECTOR, 'button[value="SOLORANKED"]'))
-    )
-    ranked_solo_duo_button = driver.find_element(By.CSS_SELECTOR, 'button[value="SOLORANKED"]')
-    ranked_solo_duo_button.click()
+    ).click()
     random_sleep()
 
-# Pesquisa o nick_tag informado na barra de pesquisa.
+# Pesquisa o nick_tag na barra de busca
 def search_input(driver, nick_tag):
     WebDriverWait(driver, 10).until(
         EC.presence_of_element_located((By.ID, "searchHome"))
-    )
-    text_box = driver.find_element(By.ID, "searchHome")
-    text_box.send_keys(nick_tag)
-    text_box.send_keys(Keys.RETURN)
+    ).send_keys(nick_tag + Keys.RETURN)
     random_sleep()
 
-# Finaliza o WebDriver e fecha o navegador.
+# Extrai os dados de uma partida
+def extrair_dados_partida(match):
+    partida = {
+        "Tipo de partida": match.find_element(By.CLASS_NAME, "game-type").text,
+        "Horário": match.find_element(By.CLASS_NAME, "time-stamp").text,
+        "Resultado": match.find_element(By.CLASS_NAME, "result").text,
+        "Duração": match.find_element(By.CLASS_NAME, "length").text,
+        "Jogador Alvo Nome": match.find_element(By.CLASS_NAME, "is-me").find_element(By.CLASS_NAME, "summoner-tooltip").text,
+        "Jogador Alvo Campeão": match.find_element(By.CLASS_NAME, "is-me").find_element(By.TAG_NAME, "img").get_attribute("alt"),
+        "Rota": match.find_element(By.CLASS_NAME, "laning--my").text,
+        "KDA": match.find_element(By.CLASS_NAME, "kda").text,
+        "KDA Ratio": match.find_element(By.CLASS_NAME, "kda-ratio").text,
+        "P/Kill": match.find_element(By.CLASS_NAME, "p-kill").text,
+        "CS": match.find_element(By.CLASS_NAME, "cs").text,
+        "Rank": match.find_element(By.CLASS_NAME, "avg-tier").text,
+    }
+    return partida
+
+# Salva os dados em formato CSV
+def salvar_dados_csv(dados_partidas, nick):
+    df = pd.DataFrame(dados_partidas)
+    arquivo = f"{nick}_dados_partidas.csv"
+    df.to_csv(arquivo, index=False)
+    print(f'Dados salvos em: {arquivo}')
+
+# Finaliza o WebDriver
 def teardown(driver):
     if driver:
         driver.quit()
 
-# Função principal que controla o fluxo do programa.
+# Executa o programa
 if __name__ == "__main__":
     main()
