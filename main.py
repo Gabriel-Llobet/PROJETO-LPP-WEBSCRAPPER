@@ -2,7 +2,7 @@
 import re
 import time
 import random
-import pandas as pd  # Manipulação de dados
+import pandas as pd
 
 # Importação do Selenium e seus módulos
 from selenium import webdriver
@@ -18,7 +18,6 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 # Função principal que controla o fluxo do programa
 def main():
-    driver = None  # Inicializa o WebDriver como None para controle no final do programa
 
     try:
         # Solicita o nick_tag do usuário e valida
@@ -89,7 +88,7 @@ def separar_nick_tag(nick: str) -> str:
     return nick.split('#')[0]
 
 # Configura o WebDriver
-def setup(headless=False):
+def setup():
     options = webdriver.ChromeOptions()
     options.add_argument("--disable-blink-features=AutomationControlled")
     options.add_argument("window-size=1920x1080")
@@ -103,11 +102,12 @@ def setup(headless=False):
     }
     options.add_experimental_option("prefs", prefs)
 
-    if headless:
-        options.add_argument("--headless")
-        options.add_argument("--disable-gpu")
-    else:
-        options.add_argument("--start-fullscreen")
+    #Modo headless não está funcional.    
+    #if headless:
+        #options.add_argument("--headless")
+        #options.add_argument("--disable-gpu")
+    
+    options.add_argument("--start-fullscreen")
 
     try:
         service = Service(ChromeDriverManager().install())
@@ -117,7 +117,7 @@ def setup(headless=False):
         return driver
     except WebDriverException as e:
         print(f"Erro ao configurar o WebDriver: {e}")
-        teardown(None)
+        teardown(driver)
         raise SystemExit("Finalizando o programa.")
 
 # Navega até o site op.gg
