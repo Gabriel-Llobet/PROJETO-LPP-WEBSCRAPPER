@@ -152,7 +152,7 @@ def extrair_dados_partida(match):
         "KDA Ratio": match.find_element(By.CLASS_NAME, "kda-ratio").text,
         "P/Kill": match.find_element(By.CLASS_NAME, "p-kill").text,
         "CS": match.find_element(By.CLASS_NAME, "cs").text,
-        "Rank": match.find_element(By.CLASS_NAME, "avg-tier").text,
+        "Rank Médio da Partida": match.find_element(By.CLASS_NAME, "avg-tier").text,
     }
     return partida
 
